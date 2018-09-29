@@ -70,7 +70,7 @@ def graphic_interface(window):
     bt_plus.grid(row=4, column=4)
     #
     bt_open_parenthese = Button(frame2, text="(", width=1, height=2,
-                                command=lambda: update_screen("(+)"))
+                                command=lambda: update_screen("("))
     bt_open_parenthese.grid(row=5, column=0)
     bt_close_parenthese = Button(frame2, text=")", width=1, height=2,
                                  command=lambda: update_screen(")"))
@@ -86,20 +86,41 @@ def graphic_interface(window):
     bt_equal.grid(row=5, column=4)
 
 
-def calculate():
-    """generate the calc"""
-    # test si il manque des parentheses et les fermer
-    # si il y a juste une parenthese
-    # si il y a juste un signe
-    # si il n'y a rien derriere un calculateur
-    # ajouter un * si il y a des parentheses sans signe
+def test_calculate():
+    """verify if calculate won't raise error"""
+    # si c'est vide
+    if SCREEN.get() is None:
+        return False
+    # si il n'y a rien derriere un calculateur ou une parenthese ouvrante
+    if SCREEN.get()[-1] in r"(/*\-+":
+        logging.debug("las char is not good for calculate")
+        return False
+    return True
+
+
+def add_missing_in_calculate():
+    """Add missing elements like ) or *"""
     screen_state = SCREEN.get()
+    # add closing )
     for _ in range(screen_state.count("(") - screen_state.count(")")):
         update_screen(")")
+    # add * if missing with parenthesis
+    screen_state = SCREEN.get()
+    pos = 0
+    for n in screen_state:
+        if n is "(" and screen_state[pos - 1] in "0123456789":
+            screen_state = screen_state[:pos]+"*"+screen_state[pos:]
+            SCREEN.set(screen_state)
+        pos += 1
 
-    result = str(eval(SCREEN.get()))
-    clear_screen()
-    update_screen(result)
+
+def calculate():
+    """generate the calc"""
+    add_missing_in_calculate()
+    if test_calculate():
+        result = str(eval(SCREEN.get()))
+        clear_screen()
+        update_screen(result)
 
 
 def delete():
@@ -129,19 +150,28 @@ def test_update_screen(value):
     """Test if there is anything, if not there's no problem
     Test if there is already a calculator, minus is not only a calculator
     Test if there is already a dot in the number"""
+    # don't start with a non logic char
+    if SCREEN.get() is "" and value in ")+*/":
+        return False
     if SCREEN.get() is not "":
+        # test if there's already a dot in the number
         is_dot = re.split(r"[()/*\-+]", SCREEN.get())
         if "." is is_dot[-1] and value is ".":
             logging.debug("already a dot")
             return False
-        if SCREEN.get()[-1] in "/*+" and value in "/*+":
+        # test if the last char accept a calculator
+        if SCREEN.get()[-1] in r"/*+(\-" and value in "/*+":
             logging.debug("already a calculator")
             return False
-        # tester si il y a une ( pour la fermer
-        # ne pas fermer une parenthese juste apres l'avoir ouvert
-        # sinon fonction
-        if SCREEN.get()[-1] is "(" and value is ")":
-            return False
+
+        if value is ")":
+            # don't close an empty parenthesis
+            if SCREEN.get()[-1] is "(":
+                return False
+            # don't close a non open parenthesis
+            if SCREEN.get().count("(") <= SCREEN.get().count(")"):
+                logging.debug("Don't close a non open parenthesis")
+                return False
     return True
 
 
@@ -168,10 +198,10 @@ def key_in(event):
 def main():
     """main function"""
     window = Tk()
+    window.title("CalcV1")
     global SCREEN
     SCREEN = StringVar()
     SCREEN.set("")
-    window.title("CalcV1")
     graphic_interface(window)
     window.bind_all("<Key>", key_in)
     window.mainloop()
