@@ -5,7 +5,7 @@ import re
 import logging
 
 # show the debug print in the console
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 
 def graphic_interface(window):
